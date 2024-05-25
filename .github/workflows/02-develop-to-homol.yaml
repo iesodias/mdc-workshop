@@ -1,0 +1,44 @@
+name: Automate Pull Request - Develop to Homol
+#
+on:
+  push:
+    branches:
+      - homol
+
+jobs:
+
+  deploy_on_Aks:
+    name: '🚀 Deploy App on AKS'
+    runs-on: ubuntcdu-latest
+
+    steps:
+    - name: '📥 Checkout code'
+      uses: actions/checkout@v2
+
+    - name: '🔐 Azure Login'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: '🔑 Get AKS Credentials'
+      run: az aks get-credentials --resource-group mdc-rg --name mdc-aks --overwrite-existing
+
+    - name: '🛳 Deploy to AKS'
+      run: kubectl apply -f kube-manifest/hml/deployment.yaml
+
+  createPullRequest:
+    needs: deploy_on_Aks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Create Pull Request
+      uses: repo-sync/pull-request@v2
+      with:
+        github_token: ${{ secrets.TOKEN_GB }}
+        destination_branch: "main"  # Merge into this branch
+        pr_title: "Automated PR from ${{ github.ref }}"
+        pr_body: "## 🚀 Changes Introduced\n\nDescrição das principais mudanças que este PR traz.\n\n## 🖼️ Screenshots\n\n## ⚙️ Testes\n\n## 📦 Dependências\n\n##  Miscelânea \n\n## ☑️ Checklist\n\n- [ ] Código testado\n- [ ] Documentação atualizada\n- [ ] Reviewers alocados\n\n## 🎉 Como testar"
+        pr_draft: false
