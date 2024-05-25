@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: mdc-app-hml
-          image: mdcregistryifd.azurecr.io/mdc-app:latest # CHANGE FOR YOUR REGISTRY
+          image: mdcregistryid.azurecr.io/mdc-app:latest # CHANGE FOR YOUR REGISTRY
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
