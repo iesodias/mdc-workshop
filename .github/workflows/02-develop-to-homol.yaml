@@ -9,7 +9,7 @@ jobs:
 
   deploy_on_Aks:
     name: '🚀 Deploy App on AKS'
-    runs-on: ubuntcdu-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: '📥 Checkout code'
