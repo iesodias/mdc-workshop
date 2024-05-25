@@ -1,56 +1,84 @@
-name: Build and Deploy K8S App
- 
+name: Create AWS Instance
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+  RUN_TERRAFORM_DESTROY: false
+
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
- 
+    inputs:
+      destroyInfra:
+        description: 'Destroy Infrastructure?'
+        required: false
+        default: 'false'
+
 jobs:
-  docker_build_push_acr:
-    name: 'Docker Build and Push to ACR'
+  Terraform_Plan:
+    name: TerraformPlanValidate
     runs-on: ubuntu-latest
-    environment: production
-  
-    defaults:
-      run:
-        shell: bash
-  
     steps:
-    - name: ⬇️ Checkout
-      uses: actions/checkout@v2
-  
-    - name: 🔑 'Docker Login'
-      uses: azure/docker-login@v1
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
       with:
-        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+        terraform_version: latest
 
-    - name: 🐳 Docker build
-      uses: docker/build-push-action@v4
-      with:
-        context: ./app
-        push: true
-        tags:
-          ${{ secrets.REGISTRY_LOGIN_SERVER }}/mdc-app:latest
-
-  deploy_on_Aks:
-    name: '🚀 Deploy App on AKS'
-    runs-on: ubuntu-latest
-    needs: docker_build_push_acr
-
-    steps:
-    - name: '📥 Checkout code'
-      uses: actions/checkout@v2
-
-    - name: '🔐 Azure Login'
+    - name: Login via Az module
       uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+        enable-AzPSSession: true 
 
-    - name: '🔑 Get AKS Credentials'
-      run: az aks get-credentials --resource-group mdc-rg --name mdc-aks --overwrite-existing
+    - name: Terraform Init
+      run: |
+        terraform -chdir=terraform/ init
 
-    - name: '🛳 Deploy to AKS'
-      run: kubectl apply -f kube-manifest/deployment.yaml
+    - name: Terraform Validate
+      run: terraform -chdir=terraform/ validate -no-color
+
+    - name: Terraform Plan
+      run: terraform -chdir=terraform/ plan -no-color -input=false
+      continue-on-error: true
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+  Deploy_Terraform:
+      name: 'Terraform Apply'
+      needs: [Terraform_Plan]
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir=terraform/ init
+
+      - name: Terraform Apply
+        run: |
+          terraform -chdir=terraform/ apply -auto-approve -input=false
+      
+  Destroy_Terraform:
+    name: 'Conditional Terraform Destroy'
+    needs: [Deploy_Terraform]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.destroyInfra == 'true'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Terraform Init
+      run: |
+        terraform -chdir=terraform/ init
+
+    - name: Terraform Destroy
+      run: |
+        terraform -chdir=terraform/ destroy -auto-approve -input=false
