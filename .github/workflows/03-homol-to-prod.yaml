@@ -1,0 +1,27 @@
+name: Automate Pull Request - Homol to Master
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  deploy_on_Aks:
+    name: '🚀 Deploy App on AKS'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: '📥 Checkout code'
+      uses: actions/checkout@v2
+
+    - name: '🔐 Azure Login'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: '🔑 Get AKS Credentials'
+      run: az aks get-credentials --resource-group mdc-rg --name mdc-aks --overwrite-existing
+
+    - name: '🛳 Deploy to AKS'
+      run: kubectl apply -f kube-manifest/prd/deployment.yaml
