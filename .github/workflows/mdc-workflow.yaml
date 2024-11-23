@@ -1,48 +1,36 @@
-name: Mdc Workflow
-
+name: docker_build_push_acr
+ 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-
+ 
 jobs:
-  build:
+  docker_build_push_acr:
+    name: 'Docker Build and Push to ACR'
     runs-on: ubuntu-latest
-    
+    environment: production
+  
+    defaults:
+      run:
+        shell: bash
+  
     steps:
-      - name: Checkout do Código
-        uses: actions/checkout@v2
+    - name: ⬇️ Checkout
+      uses: actions/checkout@v2
+  
+    - name: 🔑 'Docker Login'
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
 
-  dev:
-    needs: build  # O estágio de desenvolvimento depende do estágio de build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Fase de Desenvolvimento
-        run: echo "Executando deploy de DEV"
-
-  qa:
-    needs: build  # O estágio de qualidade depende do estágio de build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Fase de Qualidade
-        run: echo "Executando deploy de QA"
-
-  hml:
-    needs:
-      - dev  # O estágio de homologação depende do estágio de desenvolvimento
-      - qa   # e também do estágio de qualidade
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Fase de Homologação
-        run: echo "Executando deploy de HML"
-
-  prd:
-    needs: hml  # O estágio de produção depende do estágio de homologação
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Fase de Produção
-        run: echo "Executando deploy de PRD"
+    - name: 🐳 Docker build
+      uses: docker/build-push-action@v4
+      with:
+        context: ./app
+        push: true
+        tags:
+          ${{ secrets.REGISTRY_LOGIN_SERVER }}/mdc-app:latest
