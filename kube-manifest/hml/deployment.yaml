@@ -1,28 +1,28 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: mdc-app
+  name: mdc-app-hml
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mdc-app
-  namespace: mdc-app
+  name: mdc-app-hml
+  namespace: mdc-app-hml
   labels:
-    app: mdc-app
+    app: mdc-app-hml
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mdc-app
+      app: mdc-app-hml
   template:
     metadata:
       labels:
-        app: mdc-app
+        app: mdc-app-hml
     spec:
       containers:
-        - name: mdc-app
-          image: mdcregistryid.azurecr.io/mdc-app:latest
+        - name: mdc-app-hml
+          image: mdcregistryid.azurecr.io/mdc-app:latest # CHANGE FOR YOUR REGISTRY
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -53,14 +53,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mdc-app
-  namespace: mdc-app
+  name: mdc-app-hml
+  namespace: mdc-app-hml
   labels:
-    app: mdc-app
+    app: mdc-app-hml
 spec:
   type: ClusterIP
   selector:
-    app: mdc-app
+    app: mdc-app-hml
   ports:
     - port: 80
       targetPort: 5000
@@ -68,19 +68,18 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: mdc-app
-  namespace: mdc-app
+  name: mdc-app-hml
+  namespace: mdc-app-hml
   annotations:
     kubernetes.io/ingress.class: nginx
 spec:  
   rules:
   - http:
       paths:
-      - path: /
+      - path: /app1
         pathType: Prefix
         backend:
           service:
-            name: mdc-app
+            name: mdc-app-hml
             port: 
               number: 80
-
